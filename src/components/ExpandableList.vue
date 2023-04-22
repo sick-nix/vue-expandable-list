@@ -9,30 +9,13 @@ const emit = defineEmits<{
 	(e: "update:items", items: string[]): void
 }>()
 
-const cells = ref(initList(props.items))
+const cells = ref(props.items)
 const newCellIdx = ref<number | null>(null)
 const newCellValue = ref("")
 const inputRef = ref<HTMLInputElement[]>()
 
-function calculateIndex(idx: number) {
-	return (idx + 1) * 100
-}
-
-function initList(list: string[]) {
-	return list.map((v, idx) => ({
-		value: v,
-		id: calculateIndex(idx),
-		new: false,
-	}))
-}
-
 function addCell(index: number) {
 	newCellIdx.value = index
-	cells.value.splice(index, 0, {
-		value: "",
-		id: calculateIndex(index) - 1,
-		new: true,
-	})
 
 	nextTick(() => {
 		if (!inputRef.value) return
@@ -45,19 +28,17 @@ function addCell(index: number) {
 
 function confirmAddCell() {
 	if (newCellIdx.value == null) return
-	cells.value.splice(newCellIdx.value, 1, {
-		value: newCellValue.value,
-		new: false,
-		id: calculateIndex(newCellIdx.value),
-	})
+	cells.value.splice(newCellIdx.value, 0, newCellValue.value)
 	newCellIdx.value = null
 	newCellValue.value = ""
 }
 
 watch(
 	() => props.items,
-	(newValue) => (cells.value = initList(newValue))
+	(newValue) => (cells.value = newValue)
 )
+
+watch(cells, (newValue) => emit("update:items", newValue))
 </script>
 
 <template>
@@ -71,27 +52,42 @@ watch(
 			>
 				+
 			</button>
-			<div class="list-cell" :class="{ new: item.new }">
-				<template v-if="!item.new">{{ item.value }}</template>
-				<template v-else>
+			<template v-if="newCellIdx !== null && index == newCellIdx">
+				<div class="list-cell new">
 					<input
 						ref="inputRef"
 						type="text"
 						class="add-cell-input"
 						v-model="newCellValue"
 						@keyup.enter="confirmAddCell"
+						@blur="confirmAddCell"
 					/>
-				</template>
+				</div>
+			</template>
+			<div class="list-cell">
+				{{ item }}
 			</div>
 		</template>
 		<button
 			type="button"
 			class="add-cell"
 			:disabled="newCellIdx !== null"
-			@click="addCell(cells.length - 1)"
+			@click="addCell(cells.length)"
 		>
 			+
 		</button>
+		<template v-if="newCellIdx !== null && cells.length == newCellIdx">
+			<div class="list-cell new">
+				<input
+					ref="inputRef"
+					type="text"
+					class="add-cell-input"
+					v-model="newCellValue"
+					@keyup.enter="confirmAddCell"
+					@blur="confirmAddCell"
+				/>
+			</div>
+		</template>
 	</div>
 </template>
 
@@ -118,6 +114,7 @@ watch(
 	width: 1rem;
 	cursor: none;
 	margin: 0;
+	padding: 0;
 	transition: width 200ms ease-in-out, margin 200ms ease-in-out,
 		opacity 100ms ease-in-out;
 }
@@ -135,6 +132,7 @@ watch(
 
 .expandable-list .list-cell.new {
 	border-style: dashed;
+	margin-right: 1rem;
 }
 
 .add-cell-input {
