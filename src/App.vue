@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref } from "vue"
+import { ref, watch } from "vue"
 import ExpandableList from "./components/ExpandableList.vue"
 const list = ref<string[]>(["a", "b", "c"])
+
+watch(list, (newValue) => console.log(newValue), { deep: true })
 </script>
 
 <template>

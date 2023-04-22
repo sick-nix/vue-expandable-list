@@ -11,7 +11,6 @@ const emit = defineEmits<{
 
 const cells = ref(props.items)
 const newCellIdx = ref<number | null>(null)
-const newCellValue = ref("")
 const inputRef = ref<HTMLInputElement[]>()
 
 function addCell(index: number) {
@@ -26,11 +25,14 @@ function addCell(index: number) {
 	})
 }
 
-function confirmAddCell() {
+function confirmAddCell(value: string) {
 	if (newCellIdx.value == null) return
-	cells.value.splice(newCellIdx.value, 0, newCellValue.value)
+	cells.value.splice(newCellIdx.value, 0, value)
 	newCellIdx.value = null
-	newCellValue.value = ""
+}
+
+function setCellValue(index: number, value: string) {
+	cells.value.splice(index, 1, value)
 }
 
 watch(
@@ -38,16 +40,21 @@ watch(
 	(newValue) => (cells.value = newValue)
 )
 
-watch(cells, (newValue) => emit("update:items", newValue))
+watch(cells, (newValue) => emit("update:items", newValue), {
+	deep: true,
+})
 </script>
 
 <template>
 	<div class="expandable-list">
-		<template v-for="(item, index) in cells" :key="item.id">
+		<template v-for="(item, index) in cells" :key="item">
 			<button
 				type="button"
 				:disabled="newCellIdx !== null"
 				class="add-cell"
+				:class="{
+					'no-transition': newCellIdx !== null,
+				}"
 				@click="addCell(index)"
 			>
 				+
@@ -57,20 +64,28 @@ watch(cells, (newValue) => emit("update:items", newValue))
 					<input
 						ref="inputRef"
 						type="text"
-						class="add-cell-input"
-						v-model="newCellValue"
-						@keyup.enter="confirmAddCell"
-						@blur="confirmAddCell"
+						class="cell-input"
+						@keyup.enter="(e) => confirmAddCell((e.target as HTMLInputElement).value)"
+						@blur="(e) => confirmAddCell((e.target as HTMLInputElement).value)"
 					/>
 				</div>
 			</template>
 			<div class="list-cell">
-				{{ item }}
+				<input
+					type="text"
+					class="cell-input"
+					:value="item"
+					@blur="(e) => setCellValue(index, (e.target as HTMLInputElement).value)"
+					@keyup.enter="(e) => setCellValue(index, (e.target as HTMLInputElement).value)"
+				/>
 			</div>
 		</template>
 		<button
 			type="button"
 			class="add-cell"
+			:class="{
+				'no-transition': newCellIdx !== null,
+			}"
 			:disabled="newCellIdx !== null"
 			@click="addCell(cells.length)"
 		>
@@ -81,10 +96,9 @@ watch(cells, (newValue) => emit("update:items", newValue))
 				<input
 					ref="inputRef"
 					type="text"
-					class="add-cell-input"
-					v-model="newCellValue"
-					@keyup.enter="confirmAddCell"
-					@blur="confirmAddCell"
+					class="cell-input"
+					@keyup.enter="(e) => confirmAddCell((e.target as HTMLInputElement).value)"
+					@blur="(e) => confirmAddCell((e.target as HTMLInputElement).value)"
 				/>
 			</div>
 		</template>
@@ -135,11 +149,15 @@ watch(cells, (newValue) => emit("update:items", newValue))
 	margin-right: 1rem;
 }
 
-.add-cell-input {
+.cell-input {
 	max-width: 100%;
 	text-align: center;
 	background-color: transparent;
 	border: none;
 	outline: none;
+}
+
+.expandable-list .add-cell.no-transition {
+	transition: none;
 }
 </style>
